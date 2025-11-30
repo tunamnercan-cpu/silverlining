@@ -26,7 +26,7 @@ func main() {
 
 ```
 
-## Fiber-like Router
+## Router Example
 
 ```go
 package main

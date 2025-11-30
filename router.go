@@ -13,7 +13,7 @@ var (
 	errRouteExists      = errors.New("silverlining: route already registered")
 )
 
-// App provides a Fiber-like router with grouping, middleware, and parameter support.
+// App provides a structured router with grouping, middleware, and parameter support.
 type App struct {
 	tree *routeNode
 
