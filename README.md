@@ -26,6 +26,39 @@ func main() {
 
 ```
 
+## Router Example
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/go-www/silverlining"
+)
+
+func main() {
+	app := silverlining.New()
+
+	app.Use(func(c *silverlining.Context) {
+		// Runs before every route
+		c.Next()
+	})
+
+	api := app.Group("/api", func(c *silverlining.Context) {
+		// Runs before every /api route
+		c.Next()
+	})
+
+	api.Get("/users/:id", func(c *silverlining.Context) {
+		id := c.Params("id", "0")
+		c.WriteFullBodyString(200, "user "+id)
+	})
+
+	log.Fatal(app.Listen(":8080"))
+}
+```
+
 ```go
 // TLS example with custom ClientHello configuration.
 package main
