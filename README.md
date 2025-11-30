@@ -25,3 +25,37 @@ func main() {
 }
 
 ```
+
+```go
+// TLS example with custom ClientHello configuration.
+package main
+
+import (
+	"crypto/tls"
+	"log"
+
+	"github.com/go-www/silverlining"
+)
+
+func main() {
+	legacyCert, err := tls.LoadX509KeyPair("legacy.crt", "legacy.key")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	opts := &silverlining.TLSOptions{
+		CertFile: "server.crt",
+		KeyFile:  "server.key",
+		CustomConfig: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+			if hello.ServerName == "legacy.local" {
+				return &tls.Config{Certificates: []tls.Certificate{legacyCert}}, nil
+			}
+			return nil, nil
+		},
+	}
+
+	log.Fatal(silverlining.ListenAndServeTLS(":8443", func(r *silverlining.Context) {
+		r.WriteFullBodyString(200, "Hello, TLS!")
+	}, opts))
+}
+```
