@@ -3,6 +3,7 @@ package silverlining
 import (
 	"io"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -159,6 +160,70 @@ type Context struct {
 	connID  uint64
 
 	hijack bool
+
+	handlerPipeline []Handler
+	handlers        []Handler
+	handlerIndex    int
+
+	routeParams []RouteParam
+}
+
+// RouteParam represents a single path parameter captured by the router.
+type RouteParam struct {
+	Key   string
+	Value string
+}
+
+// RouteParams returns the list of captured route parameters for the current request.
+// Returned slice is valid until the next request.
+func (r *Context) RouteParams() []RouteParam {
+	return r.routeParams
+}
+
+func (r *Context) param(name string) (string, bool) {
+	for i := range r.routeParams {
+		if r.routeParams[i].Key == name {
+			return r.routeParams[i].Value, true
+		}
+	}
+	return "", false
+}
+
+// Params returns the value for the given path parameter.
+// When the parameter is missing, the optional default value is returned.
+func (r *Context) Params(name string, defaultValue ...string) string {
+	if v, ok := r.param(name); ok {
+		return v
+	}
+	if len(defaultValue) > 0 {
+		return defaultValue[0]
+	}
+	return ""
+}
+
+// ParamsBytes returns the path parameter as a byte slice.
+func (r *Context) ParamsBytes(name string) []byte {
+	v, ok := r.param(name)
+	if !ok {
+		return nil
+	}
+	return stringToBytes(v)
+}
+
+// ParamsInt converts the path parameter value into an integer.
+func (r *Context) ParamsInt(name string) (int, error) {
+	v := r.Params(name)
+	return strconv.Atoi(v)
+}
+
+// Next continues execution of the next handler in the chain.
+func (r *Context) Next() {
+	if r.handlerIndex >= len(r.handlers) {
+		return
+	}
+	handler := r.handlers[r.handlerIndex]
+	r.handlerIndex++
+	handler(r)
 }
 
 func (r *Context) Write(p []byte) (n int, err error) {
@@ -297,6 +362,10 @@ func (r *Context) resetSoft() {
 	r.hwt = false
 	r.CloseBodyReader()
 	r.response.reset()
+	r.handlers = nil
+	r.handlerIndex = 0
+	r.handlerPipeline = r.handlerPipeline[:0]
+	r.routeParams = r.routeParams[:0]
 }
 
 func (r *Context) resetHard() {
